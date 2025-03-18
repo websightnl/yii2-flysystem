@@ -7,7 +7,9 @@
 
 namespace creocoder\flysystem;
 
-use League\Flysystem\Sftp\SftpAdapter;
+use League\Flysystem\PhpseclibV3\SftpConnectionProvider;
+use League\Flysystem\PhpseclibV3\SftpAdapter;
+use League\Flysystem\UnixVisibility\PortableVisibilityConverter;
 use Yii;
 use yii\base\InvalidConfigException;
 
@@ -47,6 +49,10 @@ class SftpFilesystem extends Filesystem
      */
     public $privateKey;
     /**
+     * @var string
+     */
+    public $passphrase;
+    /**
      * @var integer
      */
     public $permPrivate;
@@ -58,6 +64,18 @@ class SftpFilesystem extends Filesystem
      * @var integer
      */
     public $directoryPerm;
+    /**
+     * @var boolean
+     */
+    public $useAgent = false;
+    /**
+     * @var integer
+     */
+    public $maxTries = 10;
+    /**
+     * @var string|null
+     */
+    public $hostFingerprint = null;
 
     /**
      * @inheritdoc
@@ -86,7 +104,7 @@ class SftpFilesystem extends Filesystem
     /**
      * @return SftpAdapter
      */
-    protected function prepareAdapter()
+    protected function prepareAdapter(): SftpAdapter
     {
         $config = [];
 
@@ -107,6 +125,31 @@ class SftpFilesystem extends Filesystem
             }
         }
 
-        return new SftpAdapter($config);
+        return new SftpAdapter(
+            new SftpConnectionProvider(
+                $this->host,
+                $this->username,
+                $this->password,
+                $this->privateKey,
+                $this->passphrase,
+                $this->port,
+                $this->useAgent,
+                $this->timeout,
+                $this->maxTries,
+                $this->hostFingerprint,
+                null,
+            ),
+            $this->root,
+            PortableVisibilityConverter::fromArray([
+                'file' => [
+                    'public' => $this->permPublic,
+                    'private' => $this->permPrivate,
+                ],
+                'dir' => [
+                    'public' => $this->directoryPerm,
+                    'private' => $this->directoryPerm,
+                ],
+            ])
+        );
     }
 }
